@@ -109,22 +109,127 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 		return $ret;
 	}
 
+	protected function runHostCommand(string $command) : void
+	{
+		$php = new PHP\CLI($this->conf);
+		$exit_code = $php->exec($command);
+
+		if (0 !== $exit_code) {
+			throw new Exception("Command failed with exit code '$exit_code': $command");
+		}
+	}
+
+	protected function updateFileContents(string $filename, string $search, string $replace) : void
+	{
+		if (!file_exists($filename)) {
+			throw new Exception("Path '$filename' doesn't exist.");
+		}
+
+		$contents = file_get_contents($filename);
+		if (false === $contents) {
+			throw new Exception("Failed to read '$filename'.");
+		}
+
+		if (false !== strpos($contents, $replace)) {
+			return;
+		}
+
+		if (false === strpos($contents, $search)) {
+			throw new Exception("Failed to update '$filename', expected marker not found.");
+		}
+
+		$contents = str_replace($search, $replace, $contents);
+		if (strlen($contents) !== file_put_contents($filename, $contents)) {
+			throw new Exception("Failed to write '$filename'.");
+		}
+	}
+
+	protected function setupLocalEnv() : void
+	{
+		$demo_env = $this->base . DIRECTORY_SEPARATOR . ".env.local.demo";
+		$local_env = $this->base . DIRECTORY_SEPARATOR . ".env.local";
+
+		if (!file_exists($local_env) && file_exists($demo_env) && !rename($demo_env, $local_env)) {
+			throw new Exception("Failed to rename '$demo_env' to '$local_env'.");
+		}
+	}
+
+	protected function prepareTrainingAssets() : void
+	{
+		$this->updateFileContents(
+			$this->base . DIRECTORY_SEPARATOR . "templates" . DIRECTORY_SEPARATOR . "base.html.twig",
+			"{% block importmap %}{{ importmap('app') }}{% endblock %}",
+			"{% block importmap %}{# Disabled for deterministic PGO training. #}{% endblock %}"
+		);
+
+		$this->updateFileContents(
+			$this->base . DIRECTORY_SEPARATOR . "templates" . DIRECTORY_SEPARATOR . "admin" . DIRECTORY_SEPARATOR . "layout.html.twig",
+			"    {{ importmap(['app', 'admin']) }}",
+			"    {# Disabled for deterministic PGO training. #}"
+		);
+
+		$this->updateFileContents(
+			$this->base . DIRECTORY_SEPARATOR . "config" . DIRECTORY_SEPARATOR . "packages" . DIRECTORY_SEPARATOR . "asset_mapper.yaml",
+			"        missing_import_mode: strict",
+			"        missing_import_mode: warn"
+		);
+	}
+
+	protected function emitLogTail(string $label, string $filename, int $max_lines = 40) : void
+	{
+		if (!file_exists($filename)) {
+			echo "$label log '$filename' was not found.\n";
+			return;
+		}
+
+		$lines = file($filename, FILE_IGNORE_NEW_LINES);
+		if (false === $lines || empty($lines)) {
+			echo "$label log '$filename' is empty.\n";
+			return;
+		}
+
+		$tail = array_slice($lines, -$max_lines);
+		echo "Last " . count($tail) . " line(s) from $label log '$filename':\n";
+		echo implode("\n", $tail), "\n";
+	}
+
+	protected function dumpBootstrapDiagnostics() : void
+	{
+		echo "Collecting bootstrap diagnostics for " . $this->getName() . ".\n";
+
+		$this->emitLogTail(
+			"PHP",
+			$this->php->getRootDir() . DIRECTORY_SEPARATOR . "pgo_run_error.log"
+		);
+		$this->emitLogTail(
+			"Symfony",
+			$this->base . DIRECTORY_SEPARATOR . "var" . DIRECTORY_SEPARATOR . "log" . DIRECTORY_SEPARATOR . "dev.log"
+		);
+		$this->emitLogTail(
+			"NGINX",
+			$this->conf->getSrvDir("nginx") . DIRECTORY_SEPARATOR . "logs" . DIRECTORY_SEPARATOR . "error.log"
+		);
+	}
+
 	protected function setupDist() : void
 	{
 		if (!file_exists($this->base . DIRECTORY_SEPARATOR . "composer.json")) {
 			echo "Setting up in '{$this->base}'\n";
-			$php = new PHP\CLI($this->conf);
 			$ver = $this->getDemoVersion();
 
 			if (is_dir($this->base)) {
 				$this->rm($this->base);
 			}
 
-			$php->exec($this->getToolFn() . " create-project --no-interaction symfony/symfony-demo " . $this->base . " " . $ver);
+			$this->runHostCommand(
+				$this->getToolFn()
+				. " create-project --no-interaction --no-progress --prefer-dist --no-scripts symfony/symfony-demo "
+				. $this->base . " " . $ver
+			);
 		}
 
-		$port = $this->getHttpPort();
-		$host = $this->getHttpHost();
+		$this->setupLocalEnv();
+		$this->prepareTrainingAssets();
 
 		$vars = array(
 			$this->conf->buildTplVarName($this->getName(), "docroot") => str_replace("\\", "/", $this->getDocroot()),
@@ -138,49 +243,52 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 	{
 		$this->nginx->up();
 
-		$s = false;
-		$url = NULL;
-		foreach ($this->getBootstrapPaths() as $path) {
-			$probe = "http://" . $this->getHttpHost() . ":" . $this->getHttpPort() . $path;
-			$res = $this->fetchBootstrapUrl($probe);
-			if (NULL !== $res["body"]) {
-				$s = $res["body"];
-				$url = $res["effective_url"] ?: $probe;
-				break;
+		try {
+			$s = false;
+			$url = NULL;
+			foreach ($this->getBootstrapPaths() as $path) {
+				$probe = "http://" . $this->getHttpHost() . ":" . $this->getHttpPort() . $path;
+				$res = $this->fetchBootstrapUrl($probe);
+				if (NULL !== $res["body"]) {
+					$s = $res["body"];
+					$url = $res["effective_url"] ?: $probe;
+					break;
+				}
+
+				echo "Bootstrap probe failed for '$probe' with HTTP status " . $res["status"] . ".\n";
+			}
+			if (NULL === $url || false === $s) {
+				$this->dumpBootstrapDiagnostics();
+				throw new Exception("Failed to determine a bootstrap URL for " . $this->getName() . ".");
 			}
 
-			echo "Bootstrap probe failed for '$probe' with HTTP status " . $res["status"] . ".\n";
-		}
-		if (NULL === $url || false === $s) {
-			throw new Exception("Failed to determine a bootstrap URL for " . $this->getName() . ".");
-		}
+			echo "Using bootstrap URL '$url'.\n";
 
-		echo "Using bootstrap URL '$url'.\n";
+			echo "Generating training urls.\n";
 
-		echo "Generating training urls.\n";
-
-		$lst = array();
-		if (preg_match_all(", href=\"([^\"]+)\",", $s, $m)) {
-			foreach ($m[1] as $u) {
-				if (strlen($u) >= 2 && "/" == $u[0] && "/" != $u[1] && !in_array(substr($u, -3), array("css", "xml", "ico"))) {
-					$ur = "http://" . $this->getHttpHost() . ":" . $this->getHttpPort() . $u;
-					if (!in_array($ur, $lst) && $this->probeUrl($ur)) {
-						$lst[] = $ur;
+			$lst = array();
+			if (preg_match_all(", href=\"([^\"]+)\",", $s, $m)) {
+				foreach ($m[1] as $u) {
+					if (strlen($u) >= 2 && "/" == $u[0] && "/" != $u[1] && !in_array(substr($u, -3), array("css", "xml", "ico"))) {
+						$ur = "http://" . $this->getHttpHost() . ":" . $this->getHttpPort() . $u;
+						if (!in_array($ur, $lst) && $this->probeUrl($ur)) {
+							$lst[] = $ur;
+						}
 					}
 				}
 			}
-		}
 
-		if (empty($lst)) {
-			printf("\033[31m WARNING: Training URL list is empty, check the regex and the possible previous error messages!\033[0m\n");
-		}
+			if (empty($lst)) {
+				printf("\033[31m WARNING: Training URL list is empty, check the regex and the possible previous error messages!\033[0m\n");
+			}
 
-		$this->nginx->down(true);
-
-		$fn = $this->getJobFilename();
-		$s = implode("\n", $lst);
-		if (strlen($s) !== file_put_contents($fn, $s)) {
-			throw new Exception("Couldn't write '$fn'.");
+			$fn = $this->getJobFilename();
+			$s = implode("\n", $lst);
+			if (strlen($s) !== file_put_contents($fn, $s)) {
+				throw new Exception("Couldn't write '$fn'.");
+			}
+		} finally {
+			$this->nginx->down(true);
 		}
 	}
 
