@@ -163,10 +163,10 @@ class Controller
 	}
 
 	/** @return array<Interfaces\TrainingCase> */
-	protected function getTrainingCases(bool $includeInactiveSelectedCases = false) : array
+	protected function getTrainingCases() : array
 	{
 		$handlers = array();
-		foreach (new TrainingCaseIterator($this->conf, $this->cases, $includeInactiveSelectedCases) as $handler) {
+		foreach (new TrainingCaseIterator($this->conf, $this->cases) as $handler) {
 			$handlers[] = $handler;
 		}
 
@@ -178,7 +178,7 @@ class Controller
 
 			$missing = array_values(array_diff($this->cases, $loaded));
 			if (!empty($missing)) {
-				echo "\n\033[31m WARNING: The cases " . implode(",", $missing) . " don't exist or could not be enabled and were ignored!\033[0m\n\n";
+				echo "\n\033[31m WARNING: The cases " . implode(",", $missing) . " don't exist or are inactive and were ignored!\033[0m\n\n";
 			}
 		}
 
@@ -201,7 +201,7 @@ class Controller
 			$srv->prepareInit($pw, $force);
 		}
 
-		foreach ($this->getTrainingCases(true) as $handler) {
+		foreach ($this->getTrainingCases() as $handler) {
 			$handler->prepareInit($pw, $force);
 		}
 
@@ -211,7 +211,7 @@ class Controller
 		}
 
 		echo "\n";
-		foreach ($this->getTrainingCases(true) as $handler) {
+		foreach ($this->getTrainingCases() as $handler) {
 			$handler->init();
 			echo "\n";
 		}
@@ -246,7 +246,7 @@ class Controller
 		$pgo->clean();
 		unset($pgo);
 
-		foreach ($this->getTrainingCases(true) as $handler) {
+		foreach ($this->getTrainingCases() as $handler) {
 			echo "\n";
 			$handler->run();
 		}
