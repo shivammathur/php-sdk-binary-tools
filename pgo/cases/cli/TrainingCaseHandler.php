@@ -11,6 +11,9 @@ use SDK\Exception;
 
 class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\TrainingCase
 {
+	/** @var int */
+	protected $max_runs = 2;
+
 	/** @var string */
 	protected $base;
 
