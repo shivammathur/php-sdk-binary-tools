@@ -66,9 +66,40 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 	{
 		return array(
 			"/en/blog/",
+			"/en/",
 			"/blog/",
 			"/",
 		);
+	}
+
+	/** @return array{body:?string,status:int,effective_url:?string} */
+	protected function fetchBootstrapUrl(string $url) : array
+	{
+		$ret = array(
+			"body" => NULL,
+			"status" => 0,
+			"effective_url" => NULL,
+		);
+
+		$c = curl_init($url);
+		curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 30);
+		curl_setopt($c, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($c, CURLOPT_TIMEOUT, 60);
+		curl_setopt($c, CURLOPT_USERAGENT, "PHP-SDK PGO symfony_demo");
+
+		$body = curl_exec($c);
+		if (false !== $body && !curl_errno($c)) {
+			$ret["status"] = (int) curl_getinfo($c, CURLINFO_HTTP_CODE);
+			$ret["effective_url"] = curl_getinfo($c, CURLINFO_EFFECTIVE_URL);
+			if ($ret["status"] >= 200 && $ret["status"] < 400) {
+				$ret["body"] = $body;
+			}
+		}
+
+		curl_close($c);
+
+		return $ret;
 	}
 
 	protected function setupDist() : void
@@ -103,11 +134,14 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 		$url = NULL;
 		foreach ($this->getBootstrapPaths() as $path) {
 			$probe = "http://" . $this->getHttpHost() . ":" . $this->getHttpPort() . $path;
-			$s = @file_get_contents($probe);
-			if (false !== $s) {
-				$url = $probe;
+			$res = $this->fetchBootstrapUrl($probe);
+			if (NULL !== $res["body"]) {
+				$s = $res["body"];
+				$url = $res["effective_url"] ?: $probe;
 				break;
 			}
+
+			echo "Bootstrap probe failed for '$probe' with HTTP status " . $res["status"] . ".\n";
 		}
 		if (NULL === $url || false === $s) {
 			throw new Exception("Failed to determine a bootstrap URL for " . $this->getName() . ".");
