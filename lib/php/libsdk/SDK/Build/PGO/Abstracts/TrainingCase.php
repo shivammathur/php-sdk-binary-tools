@@ -163,7 +163,9 @@ abstract class TrainingCase implements Interfaces\TrainingCase
 			$ret = $this->httpStatusOk((int)$st);
 		}
 
-		curl_close($c);
+		if (PHP_VERSION_ID < 80500) {
+			curl_close($c);
+		}
 
 		return $ret;
 	}

@@ -146,7 +146,9 @@ retry:
 		$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		if (false === $ret || 200 !== $code) {
 			$err = curl_error($ch);
-			curl_close($ch);
+			if (PHP_VERSION_ID < 80500) {
+				curl_close($ch);
+			}
 			if ($dest_fn) {
 				fclose($fd);
 			}
@@ -156,7 +158,9 @@ retry:
 			throw new Exception($err);
 		}
 
-		curl_close($ch);
+		if (PHP_VERSION_ID < 80500) {
+			curl_close($ch);
+		}
 
 		if ($dest_fn) {
 			fclose($fd);

@@ -98,10 +98,14 @@ class Training
 					//echo curl_multi_getcontent($h) ;
 				}
 
-				curl_close($h);
+				if (PHP_VERSION_ID < 80500) {
+					curl_close($h);
+				}
 			}
 
-			curl_multi_close($mh);
+			if (PHP_VERSION_ID < 80500) {
+				curl_multi_close($mh);
+			}
 
 		}
 

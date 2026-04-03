@@ -102,7 +102,9 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 			}
 		}
 
-		curl_close($c);
+		if (PHP_VERSION_ID < 80500) {
+			curl_close($c);
+		}
 
 		return $ret;
 	}
