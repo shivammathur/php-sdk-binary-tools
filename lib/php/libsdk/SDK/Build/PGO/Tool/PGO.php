@@ -31,12 +31,48 @@ class PGO
 		return $dn . DIRECTORY_SEPARATOR . $bn . "!" . $this->idx . ".pgc";
 	}
 
+	protected function getPgcPattern(string $fname) : string
+	{
+		$bn = basename($fname, substr($fname, -4, 4));
+		$dn = dirname($fname);
+
+		return $dn . DIRECTORY_SEPARATOR . $bn . "!*.pgc";
+	}
+
 	protected function getPgdName(string $fname) : string
 	{
 		$bn = basename($fname, substr($fname, -4, 4));
 		$dn = dirname($fname);
 
 		return $dn . DIRECTORY_SEPARATOR . $bn . ".pgd";
+	}
+
+	/** @return array<string> */
+	protected function getPgcFiles(string $fname) : array
+	{
+		$ret = glob($this->getPgcPattern($fname));
+		if (!is_array($ret)) {
+			return array();
+		}
+
+		sort($ret);
+
+		return array_values(array_unique($ret));
+	}
+
+	protected function execTool(string $cmd, bool $allow_fail = false) : void
+	{
+		$out = array();
+		$ret = 0;
+
+		exec($cmd . " 2>&1", $out, $ret);
+		if (0 !== $ret && !$allow_fail) {
+			$msg = implode("\n", $out);
+			if ("" === $msg) {
+				$msg = "Command '{$cmd}' failed with exit code {$ret}.";
+			}
+			throw new Exception($msg);
+		}
 	}
 
 	/** @return array<string> */
@@ -69,18 +105,19 @@ class PGO
 			$pgc = $this->getPgcName($base);
 			$pgd = $this->getPgdName($base);
 
-			shell_exec("pgosweep $base $pgc");
-			//passthru("pgosweep $base $pgc");
+			$this->execTool('pgosweep "' . $base . '" "' . $pgc . '"', true);
 
 			if ($merge) {
-				shell_exec("pgomgr /merge:1000 $pgc $pgd");
-				//passthru("pgomgr /merge:1000 $pgc $pgd");
-				/* File is already spent, no need to keep it.
-					If seeing linker warnings about no pgc
-					were found for some object - most
-					likely the object were not included in
-					any training scenario. */
-				@unlink($pgc);
+				$pgcs = $this->getPgcFiles($base);
+				foreach ($pgcs as $file) {
+					$this->execTool('pgomgr /merge:1000 "' . $file . '" "' . $pgd . '"');
+					/* File is already spent, no need to keep it.
+						If seeing linker warnings about no pgc
+						were found for some object - most
+						likely the object were not included in
+						any training scenario. */
+					@unlink($file);
+				}
 			}
 		}
 	}
@@ -94,6 +131,7 @@ class PGO
 	{
 		if ($clean_pgc) {
 			$its = glob($this->php->getRootDir() . DIRECTORY_SEPARATOR . "*.pgc");
+			$its = array_merge($its, glob($this->php->getExtRootDir() . DIRECTORY_SEPARATOR . "*.pgc"));
 			$its = array_merge($its, glob($this->php->getExtRootDir() . DIRECTORY_SEPARATOR . "*" . DIRECTORY_SEPARATOR . "*.pgc"));
 			foreach (array_unique($its) as $pgc) {
 				unlink($pgc);
@@ -102,10 +140,10 @@ class PGO
 
 		if ($clean_pgd) {
 			$its = glob($this->php->getRootDir() . DIRECTORY_SEPARATOR . "*.pgd");
+			$its = array_merge($its, glob($this->php->getExtRootDir() . DIRECTORY_SEPARATOR . "*.pgd"));
 			$its = array_merge($its, glob($this->php->getExtRootDir() . DIRECTORY_SEPARATOR . "*" . DIRECTORY_SEPARATOR . "*.pgd"));
 			foreach (array_unique($its) as $pgd) {
-				shell_exec("pgomgr /clear $pgd");
-				//passthru("pgomgr /clear $pgd");
+				$this->execTool('pgomgr /clear "' . $pgd . '"', true);
 			}
 		}
 	}

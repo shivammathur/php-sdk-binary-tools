@@ -1,6 +1,6 @@
 <?php
 
-namespace homebrew_cli;
+namespace cli;
 
 use SDK\Build\PGO\Abstracts;
 use SDK\Build\PGO\Config;
