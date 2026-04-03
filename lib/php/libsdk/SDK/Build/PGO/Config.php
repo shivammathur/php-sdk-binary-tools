@@ -382,6 +382,10 @@ class Config
 	{
 		$ret = NULL;
 
+		if (NULL === $name) {
+			return NULL;
+		}
+
 		$name = strtolower($name);
 
 		if (!$name) {
