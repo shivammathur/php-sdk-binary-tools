@@ -50,6 +50,11 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 		return $this->conf->getToolsDir() . DIRECTORY_SEPARATOR . "composer.phar";
 	}
 
+	protected function getDemoVersion() : string
+	{
+		return $this->conf->getSectionItem($this->getName(), "symfony_demo_version");
+	}
+
 	protected function getDocroot() : string
 	{
 		foreach (array("public", "web") as $dir) {
@@ -107,12 +112,13 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 		if (!file_exists($this->base . DIRECTORY_SEPARATOR . "composer.json")) {
 			echo "Setting up in '{$this->base}'\n";
 			$php = new PHP\CLI($this->conf);
+			$ver = $this->getDemoVersion();
 
 			if (is_dir($this->base)) {
 				$this->rm($this->base);
 			}
 
-			$php->exec($this->getToolFn() . " create-project --no-interaction symfony/symfony-demo " . $this->base);
+			$php->exec($this->getToolFn() . " create-project --no-interaction symfony/symfony-demo " . $this->base . " " . $ver);
 		}
 
 		$port = $this->getHttpPort();
