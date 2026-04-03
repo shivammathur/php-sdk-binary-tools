@@ -55,9 +55,20 @@ abstract class TrainingCase implements Interfaces\TrainingCase
 				foreach($stat["not_ok"] as $st) {
 					echo "Code: $st[http_code], URL: $st[url]", ($st["redirect_url"] ? ", Redirected to: $st[redirect_url]" : ""), "\n";
 				}
-				printf("\033[31m WARNING: Not all HTTP responses have indicated success, the PGO data might be unsuitable!\033[0m\n");
+					printf("\033[31m WARNING: Not all HTTP responses have indicated success, the PGO data might be unsuitable!\033[0m\n");
+				}
+			} else if ($this->getType() == "cli") {
+				echo "CLI exit codes:\n";
+				foreach ($stat["exit_code"] as $code => $num) {
+					printf("    %d received %d times\n", $code, $num);
+				}
+				if (count($stat["failed"]) > 0) {
+					foreach($stat["failed"] as $failure) {
+						echo "Exit code: $failure[exit_code], Command: $failure[command]\n";
+					}
+					printf("\033[31m WARNING: Some CLI training commands failed, the PGO data might be unsuitable!\033[0m\n");
+				}
 			}
-		}
 
 		echo $this->getName() . " training complete.\n";
 

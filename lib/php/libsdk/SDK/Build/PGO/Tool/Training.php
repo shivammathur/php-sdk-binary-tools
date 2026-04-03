@@ -5,6 +5,7 @@ namespace SDK\Build\PGO\Tool;
 use SDK\{Config as SDKConfig, Exception};
 use SDK\Build\PGO\Config as PGOConfig;
 use SDK\Build\PGO\Interfaces\TrainingCase;
+use SDK\Build\PGO\PHP\CLI;
 
 class Training
 {
@@ -108,19 +109,65 @@ class Training
 
 	}
 
+	/** @param array<string,mixed> $stat */
+	public function runCli(int $max_runs, ?array &$stat = array()) : void
+	{
+		$job_fn = $this->t_case->getJobFilename();
+
+		if (!file_exists($job_fn)) {
+			printf("\033[31m WARNING: Job file '$job_fn' not found!\033[0m\n");
+		}
+
+		$commands = file($job_fn, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		$stat = array("exit_code" => array(), "failed" => array());
+
+		$php = new CLI($this->conf);
+
+		for ($k = 0; $k < $max_runs; $k++) {
+			echo ".";
+
+			foreach ($commands as $command) {
+				$command = trim($command);
+				if ("" === $command) {
+					continue;
+				}
+
+				$exit_code = $php->exec($command);
+
+				if (isset($stat["exit_code"][$exit_code])) {
+					$stat["exit_code"][$exit_code]++;
+				} else {
+					$stat["exit_code"][$exit_code] = 1;
+				}
+
+				if (0 !== $exit_code) {
+					$stat["failed"][] = array(
+						"command" => $command,
+						"exit_code" => $exit_code,
+					);
+				}
+			}
+		}
+
+		echo "\n";
+	}
+
 	/* TODO Extend with number runs. */
 	/** @param array<string,mixed> $stat */
 	public function run(int $max_runs = 1, ?array &$stat = array()) : void
 	{
 		$type = $this->t_case->getType();
 		switch ($type) {
-			case "web":
-				$this->runWeb($max_runs, $stat);
-				break;
+				case "web":
+					$this->runWeb($max_runs, $stat);
+					break;
 
-			case "cli":
-			default:
-				throw new Exception("Unknown training type '$type'.");
-		}
+				case "cli":
+					$this->runCli($max_runs, $stat);
+					break;
+
+				default:
+					throw new Exception("Unknown training type '$type'.");
+			}
 	}
 }
