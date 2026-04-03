@@ -26,7 +26,7 @@ class Fetcher
 	/** @var string */
 	protected $scheme;
 
-	public function __construct(string $host, int $port, string $scheme = "https", string $arch = NULL, string $stability = NULL, Series $series = NULL)
+	public function __construct(string $host, int $port, string $scheme = "https", ?string $arch = null, ?string $stability = null, ?Series $series = null)
 	{/*{{{*/
 		$this->stability = $stability;
 		$this->arch = $arch;
