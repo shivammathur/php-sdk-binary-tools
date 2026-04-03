@@ -162,6 +162,29 @@ class Controller
 		}
 	}
 
+	/** @return array<Interfaces\TrainingCase> */
+	protected function getTrainingCases(bool $includeInactiveSelectedCases = false) : array
+	{
+		$handlers = array();
+		foreach (new TrainingCaseIterator($this->conf, $this->cases, $includeInactiveSelectedCases) as $handler) {
+			$handlers[] = $handler;
+		}
+
+		if (is_array($this->cases) && !empty($this->cases)) {
+			$loaded = array();
+			foreach ($handlers as $handler) {
+				$loaded[] = $handler->getName();
+			}
+
+			$missing = array_values(array_diff($this->cases, $loaded));
+			if (!empty($missing)) {
+				echo "\n\033[31m WARNING: The cases " . implode(",", $missing) . " don't exist or could not be enabled and were ignored!\033[0m\n\n";
+			}
+		}
+
+		return $handlers;
+	}
+
 	/** @return void */
 	public function init(bool $force = false)
 	{
@@ -178,7 +201,7 @@ class Controller
 			$srv->prepareInit($pw, $force);
 		}
 
-		foreach (new TrainingCaseIterator($this->conf) as $handler) {
+		foreach ($this->getTrainingCases(true) as $handler) {
 			$handler->prepareInit($pw, $force);
 		}
 
@@ -188,7 +211,7 @@ class Controller
 		}
 
 		echo "\n";
-		foreach (new TrainingCaseIterator($this->conf) as $handler) {
+		foreach ($this->getTrainingCases(true) as $handler) {
 			$handler->init();
 			echo "\n";
 		}
@@ -223,23 +246,9 @@ class Controller
 		$pgo->clean();
 		unset($pgo);
 
-		$cases = $this->cases;
-		foreach (new TrainingCaseIterator($this->conf) as $handler) {
-			$name = $handler->getName();
-			/* Just a white list handling for now. */
-			if (is_array($cases)) {
-				if (!in_array($name, $cases)) {
-					continue;
-				}
-				$key = array_search($name, $cases);
-				unset($cases[$key]);
-			}
-
+		foreach ($this->getTrainingCases(true) as $handler) {
 			echo "\n";
 			$handler->run();
-		}
-		if (is_array($cases) && !empty($cases)) {
-			echo "\n\033[31m WARNING: The cases " . implode(",", $cases) . " don't exist and was ignored!\033[0m\n\n";
 		}
 
 		/* All the PGC files are merged, simply clean them out. */

@@ -12,6 +12,12 @@ class TrainingCaseIterator implements \Iterator
 	/** @var PGOConfig */
 	protected $conf;
 
+	/** @var ?array<string> */
+	protected $cases;
+
+	/** @var bool */
+	protected $includeInactiveSelectedCases;
+
 	/** @var array<string> */
 	protected $items = array();
 
@@ -21,15 +27,22 @@ class TrainingCaseIterator implements \Iterator
 	/** @var object */
 	protected $el;
 
-	public function __construct(PGOConfig $conf)
+	/** @param ?array<string> $cases */
+	public function __construct(PGOConfig $conf, ?array $cases = NULL, bool $includeInactiveSelectedCases = false)
 	{
-		$this->rewind();
-
 		$this->conf = $conf;
+		$this->cases = is_array($cases) ? array_values(array_unique($cases)) : NULL;
+		$this->includeInactiveSelectedCases = $includeInactiveSelectedCases;
+		$this->rewind();
 
 		$items = glob($this->conf->getCasesTplDir() . DIRECTORY_SEPARATOR . "*");
 		foreach ($items as $it) {
 			if (!is_dir($it)) {
+				continue;
+			}
+
+			$name = basename($it);
+			if (!$this->isSelected($name)) {
 				continue;
 			}
 
@@ -38,7 +51,7 @@ class TrainingCaseIterator implements \Iterator
 				continue;
 			}
 
-			if ($this->isInactive($it)) {
+			if ($this->isInactive($it) && !$this->shouldIncludeInactive($name)) {
 				echo "The test case in '$it' is marked inactive.\n";
 				continue;
 			}
@@ -52,6 +65,20 @@ class TrainingCaseIterator implements \Iterator
 	protected function isInactive(string $base) : bool
 	{
 		return file_exists($base . DIRECTORY_SEPARATOR . "inactive");
+	}
+
+	protected function isSelected(string $name) : bool
+	{
+		if (!is_array($this->cases)) {
+			return true;
+		}
+
+		return in_array($name, $this->cases, true);
+	}
+
+	protected function shouldIncludeInactive(string $name) : bool
+	{
+		return $this->includeInactiveSelectedCases && $this->isSelected($name);
 	}
 
 	protected function getHandlerFilename(string $base) : string
