@@ -230,6 +230,8 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 
 		$this->setupLocalEnv();
 		$this->prepareTrainingAssets();
+		$this->getHttpPort();
+		$this->getHttpHost();
 
 		$vars = array(
 			$this->conf->buildTplVarName($this->getName(), "docroot") => str_replace("\\", "/", $this->getDocroot()),
