@@ -5,6 +5,7 @@ namespace homebrew_cli;
 use SDK\Build\PGO\Abstracts;
 use SDK\Build\PGO\Config;
 use SDK\Build\PGO\Interfaces;
+use SDK\Build\PGO\PHP;
 use SDK\Build\PGO\Tool;
 use SDK\Exception;
 
@@ -13,10 +14,14 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 	/** @var string */
 	protected $base;
 
+	/** @var mixed */
+	protected $php;
+
 	public function __construct(Config $conf, ?Interfaces\Server $srv_http, ?Interfaces\Server\DB $srv_db)
 	{
 		$this->conf = $conf;
 		$this->base = $this->conf->getCaseWorkDir($this->getName());
+		$this->php = new PHP\CLI($this->conf);
 	}
 
 	public function getName() : string
