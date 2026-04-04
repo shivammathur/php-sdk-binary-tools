@@ -33,6 +33,10 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 		$this->base = $this->conf->getCaseWorkDir($this->getName());
 		$this->nginx = $nginx;
 		$this->php = $nginx->getPhp();
+
+		if ("cache" === $this->conf->getScenario()) {
+			$this->max_runs = 1;
+		}
 	}
 
 	public function getName() : string
