@@ -144,10 +144,10 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 		return $ret;
 	}
 
-	protected function runHostCommand(string $command, ?string $args = NULL, array $extra_env = array()) : void
+	protected function runHostCommand(string $command, array $extra_env = array()) : void
 	{
 		$php = new PHP\CLI($this->conf);
-		$exit_code = $php->exec($command, $args, $extra_env);
+		$exit_code = $php->exec($command, NULL, $extra_env);
 
 		if (0 !== $exit_code) {
 			throw new Exception("Command failed with exit code '$exit_code': $command");
@@ -161,7 +161,7 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 			"APP_ENV" => $env,
 		);
 		$console = $this->base . DIRECTORY_SEPARATOR . "bin" . DIRECTORY_SEPARATOR . "console";
-		$this->runHostCommand($console, "$args --env=$env --no-interaction", $extra_env);
+		$this->runHostCommand($console . " " . $args . " --env=$env --no-interaction", $extra_env);
 	}
 
 	protected function updateFileContents(string $filename, string $search, string $replace) : void
