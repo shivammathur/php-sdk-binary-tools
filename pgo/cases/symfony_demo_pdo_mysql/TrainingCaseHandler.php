@@ -273,7 +273,7 @@ class TrainingCaseHandler extends Abstracts\TrainingCase implements Interfaces\T
 			$this->maria->query("DROP DATABASE IF EXISTS " . $db_name);
 			$this->maria->query("CREATE DATABASE " . $db_name . " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-			$this->runConsoleCommand('doctrine:migrations:migrate', 'prod');
+			$this->runConsoleCommand('doctrine:schema:create', 'prod');
 			$this->runConsoleCommand('doctrine:fixtures:load', 'dev');
 		} finally {
 			$this->maria->down(true);
