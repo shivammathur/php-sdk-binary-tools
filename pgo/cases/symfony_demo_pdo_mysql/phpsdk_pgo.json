@@ -1,5 +1,5 @@
 {
-	"symfony_demo_version": "v1.5.1",
+	"symfony_demo_version": "v2.9.0",
 	"type": "web",
 	"srv_http": "nginx",
 	"srv_db": "mariadb"
