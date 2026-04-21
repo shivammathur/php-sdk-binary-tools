@@ -31,11 +31,15 @@ exit /b %errorlevel%
 :add_pgo_tool_paths
 if not defined VCToolsInstallDir goto :eof
 
-for %%p in ("%VCToolsInstallDir%bin\Hostarm64\arm64" "%VCToolsInstallDir%bin\Hostx64\arm64" "%VCToolsInstallDir%bin\Hostx64\x64") do (
-	if exist "%%~p\pgomgr.exe" (
-		set PATH=%%~p;%PATH%
-	)
-)
+call :prepend_pgo_tool_path "%VCToolsInstallDir%bin\Hostarm64\arm64"
+call :prepend_pgo_tool_path "%VCToolsInstallDir%bin\Hostx64\arm64"
+call :prepend_pgo_tool_path "%VCToolsInstallDir%bin\Hostx64\x64"
+
+goto :eof
+
+:prepend_pgo_tool_path
+if "%~1"=="" goto :eof
+if exist "%~1\pgomgr.exe" set "PATH=%~1;%PATH%"
 
 goto :eof
 
