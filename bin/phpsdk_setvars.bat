@@ -17,12 +17,25 @@ set PHP_SDK_PHP_CMD=%PHP_SDK_BIN_PATH%\php\do_php.bat
 
 set PATH=%PHP_SDK_BIN_PATH%;%PHP_SDK_MSYS2_PATH%;%PATH%
 
-for /f "tokens=1* delims=: " %%a in ('link /?') do ( 
+for /f "tokens=1* delims=: " %%a in ('link /?') do (
 	set PHP_SDK_VC_TOOLSET_VER=%%b
 	goto break0
 )
 :break0
 set PHP_SDK_VC_TOOLSET_VER=%PHP_SDK_VC_TOOLSET_VER:~-13%
 
+if /i "%VSCMD_ARG_TGT_ARCH%"=="arm64" call :add_pgo_tool_paths
+
 exit /b %errorlevel%
+
+:add_pgo_tool_paths
+if not defined VCToolsInstallDir goto :eof
+
+for %%p in ("%VCToolsInstallDir%bin\Hostarm64\arm64" "%VCToolsInstallDir%bin\Hostx64\arm64" "%VCToolsInstallDir%bin\Hostx64\x64") do (
+	if exist "%%~p\pgomgr.exe" (
+		set PATH=%%~p;%PATH%
+	)
+)
+
+goto :eof
 
