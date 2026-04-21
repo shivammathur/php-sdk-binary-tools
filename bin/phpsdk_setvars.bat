@@ -24,22 +24,37 @@ for /f "tokens=1* delims=: " %%a in ('link /?') do (
 :break0
 set PHP_SDK_VC_TOOLSET_VER=%PHP_SDK_VC_TOOLSET_VER:~-13%
 
-if /i "%VSCMD_ARG_TGT_ARCH%"=="arm64" call :add_pgo_tool_paths
+if /i "%VSCMD_ARG_TGT_ARCH%"=="arm64" call :stage_pgo_tool
 
 exit /b %errorlevel%
 
-:add_pgo_tool_paths
+:stage_pgo_tool
 if not defined VCToolsInstallDir goto :eof
 
-call :prepend_pgo_tool_path "%VCToolsInstallDir%bin\Hostarm64\arm64"
-call :prepend_pgo_tool_path "%VCToolsInstallDir%bin\Hostx64\arm64"
-call :prepend_pgo_tool_path "%VCToolsInstallDir%bin\Hostx64\x64"
+set "PHP_SDK_PGO_PATH=%PHP_SDK_BIN_PATH%\pgo"
+if not exist "%PHP_SDK_PGO_PATH%" md "%PHP_SDK_PGO_PATH%" >nul 2>&1
+
+call :copy_pgo_tool "%VCToolsInstallDir%bin\Hostarm64\arm64"
+if exist "%PHP_SDK_PGO_PATH%\pgomgr.exe" goto :prepend_pgo_path
+
+call :copy_pgo_tool "%VCToolsInstallDir%bin\Hostx64\arm64"
+if exist "%PHP_SDK_PGO_PATH%\pgomgr.exe" goto :prepend_pgo_path
+
+call :copy_pgo_tool "%VCToolsInstallDir%bin\Hostx64\x64"
+if exist "%PHP_SDK_PGO_PATH%\pgomgr.exe" goto :prepend_pgo_path
 
 goto :eof
 
-:prepend_pgo_tool_path
+:copy_pgo_tool
 if "%~1"=="" goto :eof
-if exist "%~1\pgomgr.exe" set "PATH=%~1;%PATH%"
+if not exist "%~1\pgomgr.exe" goto :eof
+
+copy /y "%~1\pgomgr.exe" "%PHP_SDK_PGO_PATH%\pgomgr.exe" >nul 2>&1
+
+goto :eof
+
+:prepend_pgo_path
+set "PATH=%PHP_SDK_PGO_PATH%;%PATH%"
 
 goto :eof
 
