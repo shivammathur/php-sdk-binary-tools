@@ -326,6 +326,18 @@ class Config
 			}
 		}
 
+		/* Native arm64 dependency series are not always published yet.
+		   Reuse x64 packages as a temporary fallback when possible. */
+		if ((!isset($ret["arch"]) || !$ret["arch"]) && "arm64" == self::getCurrentArchName()) {
+			foreach ($data as $d) {
+				if ("x64" == $d["arch"] && self::getCurrentStabilityName() == $d["stability"]) {
+					$ret["arch"] = $d["arch"];
+					$ret["stability"] = $d["stability"];
+					break;
+				}
+			}
+		}
+
 		if (!isset($ret["arch"]) || !$ret["arch"]) {
 			throw new Exception("Failed to find config with arch '" . self::getCurrentArchName() . "'");
 		}

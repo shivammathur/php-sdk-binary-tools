@@ -119,7 +119,7 @@ if 15 gtr %PHP_SDK_VS_NUM% (
 	set PHP_SDK_VS_RANGE="[%PHP_SDK_VS_NUM%,!PHP_SDK_VS_RANGE%!)"
 
 	set APPEND=x86.x64
-	if /i "%PHP_SDK_OS_ARCH%"=="arm64" (
+	if /i "%PHP_SDK_ARCH%"=="arm64" (
 		set APPEND=ARM64
 	)
 	set VS_VERSION_ARGS="-latest"
