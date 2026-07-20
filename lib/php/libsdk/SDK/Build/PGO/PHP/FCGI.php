@@ -52,7 +52,29 @@ class FCGI extends Abstracts\PHP implements Interfaces\PHP
 			$env[$k] = $v;
 		}
 
+		/*
+		 * Run ZTS workers as independent processes. JIT code can embed the
+		 * process-local TSRM TLS index and must not cross a process boundary.
+		 */
+		if ($this->isThreadSafe()) {
+			foreach ($env as $k => $v) {
+				if (0 === strcasecmp($k, "PHP_FCGI_CHILDREN")
+					|| 0 === strcasecmp($k, "PHP_FCGI_CHILDREN_FOR_KID")) {
+					unset($env[$k]);
+				}
+			}
+		}
+
 		return $env;
+	}
+
+	private function getWorkerCount() : int
+	{
+		if (!$this->isThreadSafe()) {
+			return 1;
+		}
+
+		return max(1, (int)$this->conf->getSectionItem("php", "fcgi", "workers"));
 	}
 
 	public function prepareInit(PackageWorkman $pw, bool $force = false) : void
@@ -82,8 +104,7 @@ echo "PHP FCGI initialization done.\n";*/
 		$ini  = $this->getIniFilename();
 		$host = $this->conf->getSectionItem("php", "fcgi", "host");
 		$port = $this->conf->getSectionItem("php", "fcgi", "port");
-
-		$cmd = "start /b $exe -n -c $ini -b $host:$port 2>&1";
+		$workers = $this->getWorkerCount();
 
 		$desc = array(
 			0 => array("file", "php://stdin", "r"),
@@ -91,7 +112,30 @@ echo "PHP FCGI initialization done.\n";*/
 			2 => array("file", "php://stderr", "w"),
 		);
 
-		$p = proc_open($cmd, $desc, $pipes, $this->getRootDir(), $this->createEnv());
+		$processes = array();
+		$env = $this->createEnv();
+		for ($i = 0; $i < $workers; $i++) {
+			$worker_port = $port + $i;
+			$worker_options = "";
+
+			if ("cache" === $this->scenario && $workers > 1) {
+				$worker_cache = $this->opcache_file_cache . DIRECTORY_SEPARATOR . "worker-$i";
+				if (!mkdir($worker_cache)) {
+					throw new Exception("Failed to create '$worker_cache'");
+				}
+
+				$cache_id = escapeshellarg($this->id . "-worker-$i");
+				$file_cache = escapeshellarg($worker_cache);
+				$worker_options = " -d opcache.cache_id=$cache_id -d opcache.file_cache=$file_cache";
+			}
+
+			$cmd = "start /b $exe -n -c $ini$worker_options -b $host:$worker_port 2>&1";
+			$p = proc_open($cmd, $desc, $pipes, $this->getRootDir(), $env);
+			if (!is_resource($p)) {
+				throw new Exception("Failed to start PHP FCGI worker on $host:$worker_port.");
+			}
+			$processes[] = $p;
+		}
 
 		/* Give some time, it might be slow on PGI enabled proc. */
 		sleep(3);
@@ -100,15 +144,16 @@ echo "PHP FCGI initialization done.\n";*/
 			echo "$s";
 		}*/
 
-		$c = proc_close($p);
-
-		if ($c) {
-			throw new Exception("PHP FCGI process exited with code '$c'.");
+		foreach ($processes as $p) {
+			$c = proc_close($p);
+			if ($c) {
+				throw new Exception("PHP FCGI process exited with code '$c'.");
+			}
 		}
 
 		/* XXX for Opcache, setup also file cache. */
 
-		echo "PHP FCGI started.\n";
+		echo "PHP FCGI started with $workers workers.\n";
 	}
 
 	public function down(bool $force = false) : void

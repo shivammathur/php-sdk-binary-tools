@@ -13,4 +13,5 @@ interface PHP
 	public function down(bool $force = false) : void;
 	public function getVersion(bool $short = false) : string;
 	public function getExeFilename() : string;
+	public function isThreadSafe() : bool;
 }

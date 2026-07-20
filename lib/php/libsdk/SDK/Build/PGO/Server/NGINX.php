@@ -46,6 +46,17 @@ class NGINX extends Abstracts\Server implements Interfaces\Server\HTTP
 			$this->conf->buildTplVarName($this->name, "docroot") => str_replace("\\", "/", $this->base . DIRECTORY_SEPARATOR . "html"),
 		);
 
+		$host = $this->conf->getSectionItem("php", "fcgi", "host");
+		$fcgi_port = $this->conf->getSectionItem("php", "fcgi", "port");
+		$workers = $this->php->isThreadSafe()
+			? max(1, (int)$this->conf->getSectionItem("php", "fcgi", "workers"))
+			: 1;
+		$upstream = array();
+		for ($i = 0; $i < $workers; $i++) {
+			$upstream[] = "        server $host:" . ($fcgi_port + $i) . ";";
+		}
+		$vars[$this->conf->buildTplVarName("php", "fcgi", "upstream")] = implode("\n", $upstream);
+
 		$this->conf->processTplFile(
 			$nginx_conf_in,
 			$conf_fn,

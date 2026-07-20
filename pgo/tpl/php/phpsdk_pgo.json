@@ -2,7 +2,8 @@
 	"fcgi":
 	{
 		"host": "127.0.0.1",
-		"port": 9001
+		"port": 9001,
+		"workers": 8
 	},
 
 	"fcgi:env": {
