@@ -12,6 +12,8 @@ class FCGI extends Abstracts\PHP implements Interfaces\PHP
 {
 	use FileOps;
 
+	private const SHUTDOWN_TIMEOUT = 30;
+
 	/** @var bool */
 	protected $is_tcp;
 
@@ -115,6 +117,21 @@ echo "PHP FCGI initialization done.\n";*/
 
 		exec("taskkill /f /im php-cgi.exe >nul 2>&1");
 
+		/*
+		 * Terminating a process is asynchronous on Windows. Wait until all
+		 * workers are gone so the next pool cannot reattach to their Opcache
+		 * shared memory.
+		 */
+		$deadline = microtime(true) + self::SHUTDOWN_TIMEOUT;
+		while ($pids = $this->getProcessIds()) {
+			if (microtime(true) >= $deadline) {
+				throw new Exception(
+					"Timed out waiting for PHP FCGI processes to stop: " . implode(", ", $pids)
+				);
+			}
+			usleep(100000);
+		}
+
 		/* XXX Add cleanup interface. */
 		if ("cache" == $this->scenario) {
 			try {
@@ -125,5 +142,28 @@ echo "PHP FCGI initialization done.\n";*/
 		}
 
 		echo "PHP FCGI stopped.\n";
+	}
+
+	private function getProcessIds() : array
+	{
+		$output = array();
+		$status = 0;
+		exec('tasklist /fi "IMAGENAME eq php-cgi.exe" /fo csv /nh 2>nul', $output, $status);
+
+		if ($status) {
+			throw new Exception("Failed to query PHP FCGI processes.");
+		}
+
+		$pids = array();
+		foreach ($output as $line) {
+			$process = str_getcsv($line, ",", '"', "\\");
+			if (isset($process[0], $process[1])
+				&& 0 === strcasecmp($process[0], "php-cgi.exe")
+				&& ctype_digit($process[1])) {
+				$pids[] = $process[1];
+			}
+		}
+
+		return $pids;
 	}
 }
