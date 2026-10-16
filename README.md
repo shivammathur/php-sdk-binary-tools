@@ -130,10 +130,19 @@ As of the version 2.1.0, the SDK includes a tool for the [PGO](https://docs.micr
   The PGO initialization may not succeed in x86 enviroments.
 
 ## Creating PGO build
+
 - compile PHP configured using `--enable-pgi`
-- run `phpsdk_pgo --train`
+- run `phpsdk_pgo --init` to initialize the environment and clear any previous profile data
+- run `phpsdk_pgo --train --scenario default`
+- run `phpsdk_pgo --train --scenario cache --no-jit` to train OPcache without JIT
+- run `phpsdk_pgo --train --scenario cache` to also train JIT where enabled by the PHP version's template
 - run `nmake clean-pgo`
 - rebuild PHP `--with-pgo`
+
+Training passes accumulate profile data until the next `--init`. Do not run
+`--init` between passes. `--no-jit` only affects the current invocation and leaves
+OPcache enabled in the cache scenario. For templates without JIT enabled, the
+two cache passes are equivalent and only one is needed.
 
 ## Adding custom PGO training scenario
 

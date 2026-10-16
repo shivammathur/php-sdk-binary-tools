@@ -25,8 +25,11 @@ class Controller
 	/** @var array<string>|null */
 	protected $cases;
 
+	/** @var bool */
+	protected $no_jit;
+
 	/** @param array<string>|null $cases */
-	public function __construct(string $cmd, ?string $scenario, ?array $cases)
+	public function __construct(string $cmd, ?string $scenario, ?array $cases, bool $no_jit = false)
 	{
 		$this->cmd = $cmd;
 
@@ -35,6 +38,7 @@ class Controller
 		}
 		$this->scenario = $scenario;
 		$this->cases = $cases;
+		$this->no_jit = $no_jit;
 	}
 
 	/** @return mixed */
@@ -77,6 +81,7 @@ class Controller
 				$cnf = new PGOConfig(PGOConfig::MODE_RUN);
 		}
 		$cnf->setScenario($this->scenario);
+		$cnf->setJitDisabled($this->no_jit);
 
 		return $cnf;
 	}
@@ -193,6 +198,11 @@ class Controller
 			echo "\n";
 		}
 
+		/* Start a new training cycle. Subsequent scenarios accumulate in these databases. */
+		echo "Clearing PGO profiles for a new training cycle.\n";
+		$pgo = new PGO($this->conf, $this->conf->getSrv("nginx")->getPhp());
+		$pgo->clean();
+
 		echo "PGO training environment Initialization complete.\n";
 	}
 
@@ -210,17 +220,16 @@ class Controller
 		}
 
 		echo "\nStarting PGO training using scenario '{$this->scenario}'.\n\n";
+		if ($this->conf->isJitDisabled()) {
+			echo "JIT is disabled for this training pass.\n";
+		}
 		$this->up();
 
-		/* Clean the PGO db files, only needed once.
-			Imply also, that any data created during init or
-			startup is wasted. It is done by dumpbing the data
-		 	from the current running processes and subsequently
-		 	removing the files. */
+		/* Discard startup counters, preserving profiles from earlier training passes. */
 		$php = $this->conf->getSrv("nginx")->getPhp();
 		$pgo = new PGO($this->conf, $php);
 		$pgo->waste();
-		$pgo->clean();
+		$pgo->clean(true, false);
 		unset($pgo);
 
 		$cases = $this->cases;

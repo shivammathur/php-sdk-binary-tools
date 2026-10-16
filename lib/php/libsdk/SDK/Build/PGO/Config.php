@@ -23,6 +23,9 @@ class Config
 	/** @var string */
 	protected $scenario = "default";
 
+	/** @var bool */
+	protected $no_jit = false;
+
 	/** @var array<mixed> */
 	protected $tpl_vars = array();
 
@@ -344,6 +347,16 @@ class Config
 	public function getScenario() : string
 	{
 		return $this->scenario;
+	}
+
+	public function setJitDisabled(bool $disabled) : void
+	{
+		$this->no_jit = $disabled;
+	}
+
+	public function isJitDisabled() : bool
+	{
+		return $this->no_jit;
 	}
 
 	public function getNextPort() : int

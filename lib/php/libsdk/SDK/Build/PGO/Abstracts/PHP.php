@@ -175,6 +175,11 @@ abstract class PHP
 			$ret,
 			$tpl_vars
 		);
+		if ($this->conf->isJitDisabled()) {
+			if (false === file_put_contents($ret, "\n[PHP]\nopcache.jit=disable\nopcache.jit_buffer_size=0\n", FILE_APPEND)) {
+				throw new Exception("Failed to disable JIT in '$ret'.");
+			}
+		}
 
 		return $ret;
 	}
