@@ -1,0 +1,84 @@
+{
+  "repository": "php/php-sdk-binary-tools",
+  "tag": "php-sdk-2.2.0",
+  "commit": "cb51b8f716d826e465685e5a589523ede6487f76",
+  "php_version": "7.3.6",
+  "scope": "Build-time PHP7.2 mkdist.php packaging only; never distributed with built PHP",
+  "files": [
+    {
+      "path": "DONT_PUT_THIS_FOLDER_ONTO_PATH!",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "do_php.bat",
+      "bytes": 127,
+      "sha256": "4f45b0b7ddc16921a49acda261654485b71a953b46ba609015d223a80cb13372"
+    },
+    {
+      "path": "ext/php_curl.dll",
+      "bytes": 545792,
+      "sha256": "a60d29dd989c9e154eaa09501b07ef4346dff379aedd3a422fd7246e3a0a832e"
+    },
+    {
+      "path": "ext/php_ftp.dll",
+      "bytes": 56320,
+      "sha256": "5d2066ee8dc18ca883fd169d5b1133e166d35e0c7f8d28c6a2a1dc0cb0b3ad77"
+    },
+    {
+      "path": "ext/php_mbstring.dll",
+      "bytes": 1387520,
+      "sha256": "eadf5b6e2d1a3e97e924feda3d707aaa14c4792d518faf5d95771a29d0b2af84"
+    },
+    {
+      "path": "ext/php_mysqli.dll",
+      "bytes": 107520,
+      "sha256": "0ba1bbe5924c2ae2d8a620af0ff3b638b916bdb0a750a2f3a01f72b9dfb38aec"
+    },
+    {
+      "path": "ext/php_openssl.dll",
+      "bytes": 122368,
+      "sha256": "1139bac0919668f52af0123af26c7adaebd85e9b9037bdf1eb9e576804ae8f90"
+    },
+    {
+      "path": "ext/php_sqlite3.dll",
+      "bytes": 760832,
+      "sha256": "c8786dc1355979ed4992929d5a26e67958dcebd06566bca8a336d00ceb8e6f74"
+    },
+    {
+      "path": "libcrypto-1_1-x64.dll",
+      "bytes": 3438592,
+      "sha256": "5090ec4bfbdd74aff5489e06dee9aedd4cc2c326bbfe8adf683c060c62ef9571"
+    },
+    {
+      "path": "libssh2.dll",
+      "bytes": 225792,
+      "sha256": "9a7331af2827d7d1f19fe73f9205b60feb8d2f98d84e11e75bca0183d1b1a4d9"
+    },
+    {
+      "path": "libssl-1_1-x64.dll",
+      "bytes": 681472,
+      "sha256": "3683c62de4e4a1e88abadde290e762355d0b9c20acef601bc896553cf881cd2d"
+    },
+    {
+      "path": "nghttp2.dll",
+      "bytes": 197120,
+      "sha256": "ae0f6935149a7eb66dd51dc8bf37298d06dc03ef1c96061cc3304b73a61dba2d"
+    },
+    {
+      "path": "php.exe",
+      "bytes": 127488,
+      "sha256": "7077b28525411065bb3e550788df7127c48c52527cb4e6068285e05bc23b4775"
+    },
+    {
+      "path": "php.ini",
+      "bytes": 228,
+      "sha256": "f1d6f5ed1cc800339b0510cf8a09a03927f27bf29f1d16e293f2eda87ebcf917"
+    },
+    {
+      "path": "php7.dll",
+      "bytes": 9167872,
+      "sha256": "8506e8384f3dcbcd22b65e7a735c79873f1073c944906b2505e424e3b3d528e2"
+    }
+  ]
+}
